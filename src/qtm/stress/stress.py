@@ -19,7 +19,7 @@ from qtm.constants import RY_KBAR
 
 
 def stress(dftcomm:DFTCommMod,
-            cryst: Crystal, 
+            cryst: Crystal,
            gspc:GSpace,
            rho:FieldGType,
            numbnd:int,
@@ -28,39 +28,39 @@ def stress(dftcomm:DFTCommMod,
            verbosity:bool=False,
            unit: str = 'Ry/bohr**3'
            )->NDArray:
-    
+
     ##summation of all the stresses
 
     ewald_stress=stress_ewald(crystal=cryst,
                                 gspc=gspc,
                                 gamma_only=gamma_only)
-    
+
     local_stress=stress_local(cryst=cryst,
                                 gspc=gspc,
                                 rho=rho,
                                 gamma_only=gamma_only)
 
-    
+
     kinetic_stress=stress_kinetic(dftcomm=dftcomm,
                                 numbnd=numbnd,
                                   cryst=cryst,
                                 wfn_k_group=wfn_k_group)
 
-    
+
     hartree_stress=stress_har(rho=rho,
                             gspc=gspc)
 
-    
+
     stress_nl=stress_nonloc(dftcomm=dftcomm,
                             numbnd=numbnd,
                             wavefun=wfn_k_group,
                             cryst=cryst)
 
-    
+
     xc_stress= stress_xc(cryst=cryst,
                             gspc=gspc,
                             rho=rho)
-    
+
     stress_total_unsym=ewald_stress+local_stress+kinetic_stress+hartree_stress+stress_nl+xc_stress
 
     stress_total=cryst.symm.symmetrize_matrix(stress_total_unsym)
@@ -84,8 +84,3 @@ def stress(dftcomm:DFTCommMod,
         raise ValueError('unit should be either `Ry/bohr**3` or `kbar`')
     total_presure=np.trace(stress_total)/3
     return stress_total, total_presure
-
-
-
-
-

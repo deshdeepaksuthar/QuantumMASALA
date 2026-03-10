@@ -1,42 +1,25 @@
 from __future__ import annotations
-
-from typing import Optional, Callable
-
-
-from typing import TYPE_CHECKING
+import numpy as np
+from typing import Optional, TYPE_CHECKING
 import logging
+from tqdm import trange
 
 from qtm.logger import qtmlogger
-from qtm.config import MPI4PY_INSTALLED
-
-import numpy as np
 from qtm.config import qtmconfig
 from qtm.containers.field import FieldGType, FieldRType
-from qtm.containers.wavefun import WavefunGType
 from qtm.crystal.crystal import Crystal, BasisAtoms
 from qtm.dft.kswfn import KSWfn
-from qtm.dft.scf import EnergyData
-from qtm.gspace import GSpace, GkSpace
-from qtm.mpi.comm import QTMComm
-from qtm.pot import ewald, hartree, xc
+from qtm.pot import hartree, xc
 from qtm.pot.xc import check_libxc_func, get_libxc_func
 from qtm.pseudo.loc import loc_generate_pot_rhocore
 from qtm.pseudo.nloc import NonlocGenerator
-#from qtm.tddft_gamma.prop.etrs import normalize_rho
 from qtm.tddft_gamma.propagate import propagate
-from tqdm import trange
 from qtm.force import force
 from qtm.dft.config import DFTCommMod
-from qtm.constants import RYDBERG, ELECTRONVOLT, vel_RYD, BOLTZMANN_SI, BOLTZMANN_RYD, M_NUC_RYD, MASS_SI
-
-if MPI4PY_INSTALLED:
-    from qtm.mpi.containers import get_DistFieldG
-from qtm.mpi.gspace import DistGSpace, DistGkSpace
+from qtm.constants import BOLTZMANN_RYD, M_NUC_RYD, MASS_SI
 
 if TYPE_CHECKING:
     from typing import Literal
-    from numbers import Number
-__all__ = ["scf", "EnergyData", "Iterprinter"]
 
 def Ehrenfest(
     dftcomm: DFTCommMod,
@@ -86,22 +69,19 @@ def Ehrenfest(
     mass_si=mass_all*MASS_SI
     ##First we assign velocities to the atoms
     vel=np.random.rand(tot_num, 3)-0.5
-    #dftcomm.image_comm.Bcast(vel)      
     ##Calculate the momentum
     momentum=mass_all*vel.T
 
     momentum_T=momentum.T
     momentum_T-=np.mean(momentum, axis=1)
     ##Calculate the new velocity after subtracting the momentum of the center of mass
-    
+
     vel=momentum_T.T/mass_all
 
     ##Calculate the kinetic energy
     ke=0.5*np.sum(mass_all*(vel)**2)
     ##Calculate the temperature
     T=2*ke/(3*tot_num*BOLTZMANN_RYD)
-    # print("BOLTZMANN_RYD", BOLTZMANN_RYD)
-    #if dftcomm.image_comm.rank==0: print("the temperature calculated from the random velocities is", T, "K")
     ##Rescale the velocities to the desired temperature
     vel*=np.sqrt(T_init/T)
     if type(vel_start)==np.ndarray:
@@ -163,13 +143,13 @@ def Ehrenfest(
             #comm_world.bcast(v_loc._data)
             v_loc *= 1 / np.prod(gspc_wfn.grid_shape)
             return v_loc
-        
+
         v_loc=compute_v_local(rho_start)
         v_loc=v_loc.to_g()
-        
+
         force_calc=force(dftcomm=dftcomm,
                         numbnd=numbnd,
-                        wavefun=wfn_gamma, 
+                        wavefun=wfn_gamma,
                         crystal=crystal,
                         gspc=gspc_wfn,
                         rho=rho_start,
@@ -178,7 +158,7 @@ def Ehrenfest(
                         gamma_only=gamma_only,
                         verbosity=verbosity)[0]
         return force_calc
-    
+
     def dipole_updater(
         step: int,
         rho: FieldGType
@@ -192,17 +172,17 @@ def Ehrenfest(
     ##Making the Hamiltonian Propagator  from the crystal:
     sp=crystal.l_atoms[0]
     for istep in range(numstep):
-        
+
         ##First propagate the nuclear coordinates
         ##Half Step
         force_0=force_wrapper(dftcomm=dftcomm,
-                        wfn_gamma=wfn_gamma, 
+                        wfn_gamma=wfn_gamma,
                         crystal=crystal,
                         rho_start=rho_start,
                         gamma_only=False,
                         verbosity=False,
                         libxc_func=libxc_func)
-        
+
         acc_0=(force_0.T/mass_all)
         coords_cart_all+=vel.T*time_step_N+0.5*acc_0.T*time_step_N**2
         vel+=0.5*acc_0*time_step_N
@@ -228,7 +208,7 @@ def Ehrenfest(
         crystal=Crystal(reallat, updated_sp)
 
         force_1by4=force_wrapper(dftcomm=dftcomm,
-                        wfn_gamma=wfn_gamma, 
+                        wfn_gamma=wfn_gamma,
                         crystal=crystal,
                         rho_start=rho_start,
                         gamma_only=False,
@@ -272,18 +252,18 @@ def Ehrenfest(
                     numstep=1,
                     dipole_updater=dipole_updater,
                     libxc_func=libxc_func)
-        
+
         rho_start = (wfn_gamma[0][0].k_weight * wfn_gamma[0][0].compute_rho(ret_raw=True).to_g())
 
         ##Now again we update the nuclear coordinates
         force_1by2=force_wrapper(dftcomm=dftcomm,
-                        wfn_gamma=wfn_gamma, 
+                        wfn_gamma=wfn_gamma,
                         crystal=crystal,
                         rho_start=rho_start,
                         gamma_only=False,
                         verbosity=False,
                         libxc_func=libxc_func)
-        
+
         acc_1by2=(force_1by2.T/mass_all)
         coords_cart_all+=vel.T*time_step_N+0.5*acc_1by2.T*time_step_N**2
         vel+=0.5*acc_0*time_step_N
@@ -306,7 +286,7 @@ def Ehrenfest(
         crystal=Crystal(reallat, updated_sp)
 
         force_3by4=force_wrapper(dftcomm=dftcomm,
-                        wfn_gamma=wfn_gamma, 
+                        wfn_gamma=wfn_gamma,
                         crystal=crystal,
                         rho_start=rho_start,
                         gamma_only=False,
@@ -331,8 +311,5 @@ def Ehrenfest(
         crystal=Crystal(reallat, updated_sp)
 
         dist=np.linalg.norm(coords_cart_all[0]-coords_cart_all[1])
-        print(dist)
-    
+
     return coords_cart_all
-
-

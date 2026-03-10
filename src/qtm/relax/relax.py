@@ -1,86 +1,30 @@
-
 from __future__ import annotations
-
-
 import numpy as np
-from scipy.optimize import minimize
-
-from qtm.constants import RYDBERG, ELECTRONVOLT
-from qtm.lattice import RealLattice
-from qtm.crystal import BasisAtoms, Crystal
-from qtm.pseudo import UPFv2Data
-from qtm.kpts import gen_monkhorst_pack_grid
-from qtm.gspace import GSpace
-from qtm.mpi import QTMComm
-from qtm.dft import DFTCommMod, scf
-
-from qtm.io_utils.dft_printers import print_scf_status
-
-from qtm.config import qtmconfig
-from qtm.logger import qtmlogger
-qtmconfig.fft_backend = 'mkl_fft'
 from typing import TYPE_CHECKING
-from qtm.logger import qtmlogger
-
 if TYPE_CHECKING:
     from typing import Literal
     from numbers import Number
-__all__ = ['scf', 'EnergyData', 'IterPrinter']
-
 from dataclasses import dataclass
-from time import perf_counter
 from sys import version_info
-import numpy as np
+from scipy.optimize import minimize
 
-from qtm.crystal import Crystal
-from qtm.kpts import KList
-from qtm.gspace import GSpace, GkSpace
-from qtm.mpi.gspace import DistGSpace
-from qtm.containers import FieldGType, FieldRType, get_FieldG
-from qtm.config import NDArray
-
-from qtm.pot import hartree, xc, ewald
-from qtm.pseudo import (
-    loc_generate_rhoatomic, loc_generate_pot_rhocore,
-    NonlocGenerator
-)
-from qtm.symm.symmetrize_field import SymmFieldMod
-
-from qtm.dft import DFTCommMod, DFTConfig, KSWfn, KSHam, eigsolve, occup, mixing
-
-from qtm.mpi.check_args import check_system
-from qtm.mpi.utils import scatter_slice
-
-from qtm.force import force
-
-from qtm.msg_format import *
 from qtm.constants import RYDBERG
-
+from qtm.containers import FieldGType, get_FieldG
+from qtm.crystal import BasisAtoms, Crystal
+from qtm.force import force
+from qtm.dft import DFTCommMod, DFTConfig, KSWfn,  scf
+from qtm.dft.scf import EnergyData
+from qtm.gspace import GSpace
+from qtm.kpts import gen_monkhorst_pack_grid
+from qtm.mpi import QTMComm
+from qtm.mpi.gspace import DistGSpace
+from qtm.msg_format import *
 from qtm.config import MPI4PY_INSTALLED
 if MPI4PY_INSTALLED:
     from mpi4py.MPI import COMM_WORLD
 else:
     COMM_WORLD = None
-
 comm_world = QTMComm(COMM_WORLD)
-
-
-@dataclass
-class EnergyData:
-    total: float = 0.0
-    hwf: float = 0.0
-    one_el: float = 0.0
-    ewald: float = 0.0
-    hartree: float = 0.0
-    xc: float = 0.0
-
-    fermi: float | None = None
-    smear: float | None = None
-    internal: float | None = None
-
-    HO_level: float | None = None
-    LU_level: float | None = None
-
 
 if version_info[1] >= 8:
     from typing import Protocol
@@ -117,7 +61,7 @@ def relax(dftcomm: DFTCommMod,
           occ_typ: Literal['fixed', 'smear'] = 'smear',
           smear_typ: Literal['gauss', 'fd', 'mv'] = 'gauss',
           e_temp: float = 1E-3,
-          conv_thr: float = 1E-6*RYDBERG, 
+          conv_thr: float = 1E-6*RYDBERG,
           maxiter: int = 100,
           diago_thr_init: float = 1E-2*RYDBERG,
           iter_printer: IterPrinter | None = None,
@@ -126,7 +70,7 @@ def relax(dftcomm: DFTCommMod,
           ret_vxc:bool=False,
           gamma_only:bool=False,
           ):
-    
+
     l_atoms = crystal.l_atoms
     #tot_num = np.sum([sp.numatoms for sp in l_atoms])
     num_in_types=[sp.numatoms for sp in l_atoms]
@@ -165,7 +109,7 @@ def relax(dftcomm: DFTCommMod,
         ecut_rho=4*ecut_wfn
         grho_itr_serial=GSpace(crystal_itr.recilat, ecut_rho)
         print("is dftcomm.pwgrp_intra None?", dftcomm.pwgrp_intra is None, flush=True)
-        if dftcomm.n_pwgrp == dftcomm.image_comm.size:  
+        if dftcomm.n_pwgrp == dftcomm.image_comm.size:
             grho_itr = grho_itr_serial
         else:
             grho_itr = DistGSpace(comm_world, grho_itr_serial)
@@ -173,32 +117,32 @@ def relax(dftcomm: DFTCommMod,
         print("What is the type of the Gspace here?", type(grho_itr), flush=True)
                 #FieldG_rho_itr: FieldGType= get_FieldG(grho_itr)
         out = scf(
-                dftcomm=dftcomm, 
-                crystal=crystal_itr, 
-                kpts=kpts_itr, 
-                grho=grho_itr, 
+                dftcomm=dftcomm,
+                crystal=crystal_itr,
+                kpts=kpts_itr,
+                grho=grho_itr,
                 gwfn=gwfn_itr,
-                numbnd=numbnd, 
-                is_spin=is_spin, 
-                is_noncolin=is_noncolin, 
-                symm_rho=symm_rho, 
-                rho_start=rho_start, 
-                wfn_init=wfn_init, 
-                libxc_func=libxc_func, 
-                occ_typ=occ_typ, 
-                smear_typ=smear_typ, 
-                e_temp=e_temp,  
-                conv_thr=conv_thr, 
-                maxiter=maxiter, 
-                diago_thr_init=diago_thr_init, 
-                iter_printer=iter_printer, 
-                mix_beta=mix_beta, 
-                mix_dim=mix_dim, 
-                dftconfig=dftconfig, 
+                numbnd=numbnd,
+                is_spin=is_spin,
+                is_noncolin=is_noncolin,
+                symm_rho=symm_rho,
+                rho_start=rho_start,
+                wfn_init=wfn_init,
+                libxc_func=libxc_func,
+                occ_typ=occ_typ,
+                smear_typ=smear_typ,
+                e_temp=e_temp,
+                conv_thr=conv_thr,
+                maxiter=maxiter,
+                diago_thr_init=diago_thr_init,
+                iter_printer=iter_printer,
+                mix_beta=mix_beta,
+                mix_dim=mix_dim,
+                dftconfig=dftconfig,
                 ret_vxc=ret_vxc,
                 force_stress=True
                 )
-        
+
         scf_converged, rho, l_wfn_kgrp, en, v_loc, rho_core, nloc, xc_compute= out
 
         print(flush=True)
@@ -207,7 +151,7 @@ def relax(dftcomm: DFTCommMod,
 
         force_itr= force(dftcomm=dftcomm,
                          numbnd=numbnd,
-                         wavefun=l_wfn_kgrp, 
+                         wavefun=l_wfn_kgrp,
                          crystal=crystal_itr,
                          gspc=gwfn_itr,
                          rho=rho,
@@ -215,7 +159,7 @@ def relax(dftcomm: DFTCommMod,
                          nloc_dij_vkb=nloc,
                          gamma_only=False,
                          verbosity=True)[0]
-        
+
         force_itr*=constraint[:, None]
         jac=-force_itr.flatten()
         print("forces are", force_itr)
@@ -231,7 +175,7 @@ def relax(dftcomm: DFTCommMod,
     ##The final energy
     en_final=minimization.fun
 
-   
+
     coords_cart_final_itr=coords_cart_final.reshape(-1,3)
     l_atoms_itr=[]
     num_counter=0

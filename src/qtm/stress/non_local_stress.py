@@ -50,7 +50,7 @@ def stress_nonloc(dftcomm:DFTCommMod,
                 occ_num=k_wfn.occ[band_slice] ##Getting the occupation numbers
 
                 ## Getting the non-local beta projectors and dij matrices from the wavefun
-                start_time = perf_counter() 
+                start_time = perf_counter()
                 k_nonloc= NonlocGenerator(sp=sp,
                                           gwfn=gkspace.gwfn)
                 vkb, dij=nloc_dij_vkb[k_counter][ityp]
@@ -62,43 +62,35 @@ def stress_nonloc(dftcomm:DFTCommMod,
                 dy_vkby=dy_vkby.data
                 dy_vkbz=dy_vkbz.data
                 dy_vkb=np.array([dy_vkbx, dy_vkby, dy_vkbz])
-                
-                if dftcomm.image_comm.rank==0: 
+
+                if dftcomm.image_comm.rank==0:
                     print("Time taken for non local generator in stress: ", perf_counter() - start_time)
                     print(flush=True)
 
                 start_time = perf_counter()
-                #row_vkb=int(vkb_full.data.shape[0]/sp.numatoms)
-                #vkb=vkb_full.data[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]
-                #dj_vkb=djvkb_full.data[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]
-                
+
                 dij_sp=dij/RYDBERG_HART
-                '''dy_vkbx=dy_vkbx_full.data[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]
-                dy_vkby=dy_vkby_full.data[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]
-                dy_vkbz=dy_vkbz_full.data[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]
-                dy_vkb=np.array([dy_vkbx, dy_vkby, dy_vkbz])
-                dij_sp=dij[atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb, atom_label_sp*row_vkb:(atom_label_sp+1)*row_vkb]/RYDBERG_HART'''
-                if dftcomm.image_comm.rank==0: 
+                if dftcomm.image_comm.rank==0:
                     print("Time taken for slicing in stress: ", perf_counter() - start_time)
                     print(flush=True)
 
                 ## Calculation of the Diagonal Terms
                 start_time = perf_counter()
                 betaPsi=np.conj(vkb)@evc_data
-                if dftcomm.pwgrp_intra is not None: 
+                if dftcomm.pwgrp_intra is not None:
                     betaPsi=dftcomm.pwgrp_intra.allreduce(betaPsi)
                 abs2_betaPsi=np.abs(betaPsi)**2*occ_num
                 quant=np.sum(dij_sp@abs2_betaPsi)
                 quant*=k_weight
                 diag_stress=(np.eye(3)*quant).astype(np.complex128)
                 stress_nl+=diag_stress
-                if dftcomm.image_comm.rank==0: 
+                if dftcomm.image_comm.rank==0:
                     print("Time taken for diagonal terms in stress: ", perf_counter() - start_time)
                     print(flush=True)
-                
-                ##The derivative of Spherical Bessel function  
+
+                ##The derivative of Spherical Bessel function
                 start_time = perf_counter()
-                betaPsi_d=dij_sp@betaPsi           
+                betaPsi_d=dij_sp@betaPsi
                 beta_dj=dj_vkb.T@betaPsi_d   #(shape is G,numbnd)
                 Sigma_j_nl=2*np.real(np.conj(evc_data)*beta_dj)*occ_num
                 Sigma_j_nl=np.sum(Sigma_j_nl, axis=1)
@@ -111,7 +103,7 @@ def stress_nonloc(dftcomm:DFTCommMod,
                 if dftcomm.pwgrp_intra is not None:
                     stress_dj=dftcomm.pwgrp_intra.allreduce(stress_dj)
                 stress_nl+=stress_dj
-                if dftcomm.image_comm.rank==0: 
+                if dftcomm.image_comm.rank==0:
                     print("Time taken for derivative of spherical bessel in stress: ", perf_counter() - start_time)
                     print(flush=True)
 
@@ -155,7 +147,7 @@ def stress_nonloc(dftcomm:DFTCommMod,
                 if dftcomm.pwgrp_intra is not None:
                     stress_dy=dftcomm.pwgrp_intra.allreduce(stress_dy)
                 stress_nl+=stress_dy
-                if dftcomm.image_comm.rank==0: 
+                if dftcomm.image_comm.rank==0:
                     print("Time taken for derivative of spherical harmonics in stress: ", perf_counter() - start_time)
                     print(flush=True)
 
@@ -163,17 +155,9 @@ def stress_nonloc(dftcomm:DFTCommMod,
     stress_nl/=omega
     stress_nl=np.real(stress_nl)
     stress_nl=cryst.symm.symmetrize_matrix(stress_nl)
-    if dftcomm.image_comm.rank==0: 
+    if dftcomm.image_comm.rank==0:
         print("Time taken for symmetrization in stress: ", perf_counter() - start_time)
         print(flush=True)
 
     start_time=perf_counter()
-    '''with dftcomm.image_comm as comm:
-        comm.Allreduce(comm.IN_PLACE, stress_nl)'''
-    '''if dftcomm.image_comm.rank==0: 
-        print("Time taken for reduction in stress: ", perf_counter() - start_time)
-        print(flush=True)'''
     return stress_nl*RY_KBAR
-        
-
-    

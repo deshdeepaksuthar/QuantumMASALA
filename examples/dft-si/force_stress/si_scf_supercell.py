@@ -1,19 +1,5 @@
-
 import numpy as np
 """
-This example file demonstrates the usage of G-space parallelization in QuantumMASALA.
-
-The code performs a self-consistent field (SCF) calculation for a silicon supercell.
-
-The main steps of the code are as follows:
-1. Import necessary modules and libraries.
-2. Set up the communication world for parallelization.
-3. Define the lattice and atom basis for the crystal.
-4. Generate the supercell based on the specified size.
-5. Generate k-points using a Monkhorst Pack grid.
-6. Set up the G-Space for the calculation.
-7. Perform the SCF calculation using the specified parameters.
-8. Print the SCF convergence status and results.
 
 Example usage:
 python si_scf_supercell.py <supercell_size>
@@ -67,7 +53,7 @@ reallat = RealLattice.from_alat(
 )
 
 # Atom Basis
-si_oncv = UPFv2Data.from_file("Si_ONCV_PBE-1.2.upf")
+si_oncv = UPFv2Data.from_file("../Si_ONCV_PBE-1.2.upf")
 si_atoms = BasisAtoms(
     "si",
     si_oncv,
@@ -97,7 +83,7 @@ ecut_rho = 4 * ecut_wfn
 grho_serial = GSpace(crystal.recilat, ecut_rho)
 
 # If G-space parallelization is not required, use the serial G-space object
-if dftcomm.n_pwgrp == dftcomm.image_comm.size:  
+if dftcomm.n_pwgrp == dftcomm.image_comm.size:
     grho = grho_serial
 else:
     grho = DistGSpace(comm_world, grho_serial)
@@ -125,75 +111,47 @@ out = scf(
     force_stress=True
 )
 
-scf_converged, rho, l_wfn_kgrp, en, v_loc, nloc, xc_compute=out
+scf_converged, rho, l_wfn_kgrp, en, v_loc, _,  nloc, xc_compute=out
 
-initial_time=time.time()
+if comm_world.rank == 0:
+    print("SCF Routine has exited")
+    print(qtmlogger)
 
-start_time = time.time()
 force_ewa=force_ewald(dftcomm=dftcomm,
                       crystal=crystal,
-                      gspc=gwfn, 
+                      gspc=gwfn,
                       gamma_only=False)
 
-if dftcomm.image_comm.rank==0:
-    print("force ewald", force_ewa)
-    print("Time taken for ewald force: ", time.time() - start_time)
-print(flush=True)
-
 ##Calculation time of Local Forces
-start_time = time.time()
 force_loc=force_local(dftcomm=dftcomm,
-                      cryst=crystal, 
-                      gspc=gwfn, rho=rho, 
+                      cryst=crystal,
+                      gspc=gwfn, rho=rho,
                       vloc=v_loc,
                       gamma_only=False)
 
-if dftcomm.image_comm.rank==0:
-    print("force local", force_loc)
-    print("Time taken for local force: ", time.time() - start_time)
-print(flush=True)
 
 ##Calculation time of Non Local Forces
-start_time = time.time()
 force_nloc=force_nonloc(dftcomm=dftcomm,
                           numbnd=numbnd,
-                          wavefun=l_wfn_kgrp, 
+                          wavefun=l_wfn_kgrp,
                           crystal=crystal,
                           nloc_dij_vkb=nloc)
 
-if dftcomm.image_comm.rank==0:
-    print("force non local", force_nloc)
-    print("Time taken for non local force: ", time.time() - start_time)
-print(flush=True)
-
-#force_time=time.time()
-start_time = time.time()
 force_total, force_norm=force(dftcomm=dftcomm,
                             numbnd=numbnd,
                             wavefun=l_wfn_kgrp,
                             crystal=crystal,
-                            gspc=gwfn, 
+                            gspc=gwfn,
                             rho=rho,
                             vloc=v_loc,
                             nloc_dij_vkb=nloc,
                             gamma_only=False,
-                            verbosity=True)
+                            verbosity=False)
 
 
 if dftcomm.image_comm.rank==0:
+    print("force ewald", force_ewa)
+    print("force local", force_loc)
+    print("force non local", force_nloc)
     print("force total", force_total)
     print("force norm", force_norm)
-    print("Time taken for force: ", time.time() - start_time)
-
-if comm_world.rank == 0:
-    print("SCF Routine has exited")
-    print(qtmlogger)
-
-final_time=time.time() 
-
-if dftcomm.image_comm.rank==0:
-    print("Total time taken for the calculation", final_time-initial_time)
-
-if comm_world.rank == 0:
-    print("SCF Routine has exited")
-    print(qtmlogger)

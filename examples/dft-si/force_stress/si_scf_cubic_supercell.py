@@ -1,23 +1,8 @@
-
 import numpy as np
 import time
 """
-This example file demonstrates the usage of G-space parallelization in QuantumMASALA.
-
-The code performs a self-consistent field (SCF) calculation for a silicon supercell.
-
-The main steps of the code are as follows:
-1. Import necessary modules and libraries.
-2. Set up the communication world for parallelization.
-3. Define the lattice and atom basis for the crystal.
-4. Generate the supercell based on the specified size.
-5. Generate k-points using a Monkhorst Pack grid.
-6. Set up the G-Space for the calculation.
-7. Perform the SCF calculation using the specified parameters.
-8. Print the SCF convergence status and results.
-
 Example usage:
-python si_scf_supercell.py <supercell_size>
+python si_scf_cubic_supercell.py <supercell_size>
 
 Parameters:
 - supercell_size: The size of the supercell in each dimension.
@@ -74,7 +59,7 @@ reallat = RealLattice.from_alat(
 )
 
 # Atom Basis
-si_oncv = UPFv2Data.from_file("Si_ONCV_PBE-1.2.upf")
+si_oncv = UPFv2Data.from_file("../Si_ONCV_PBE-1.2.upf")
 
 si_atoms = BasisAtoms.from_alat(
     "si",
@@ -84,14 +69,11 @@ si_atoms = BasisAtoms.from_alat(
     np.array([[0,0,0],[0.5, 0.5, 0],[0, 0.5, 0.5],[0.5, 0, 0.5], [0.25, 0.25, 0.25], [0.25, 0.75, 0.75], [0.75, 0.25, 0.75], [0.75, 0.75, 0.25]]),
 )
 
-crystal_unit = Crystal(reallat, [si_atoms]) 
+crystal_unit = Crystal(reallat, [si_atoms])
 crystal_supercell=crystal_unit.gen_supercell([supercell_size] * 3)
 reallat_supercell=crystal_supercell.reallat
-##print the crystal coordinates of the supercell
-#print("The crystal coordinates of the supercell", crystal_supercell.l_atoms[0].r_alat)
 r_alat_supercell=crystal_supercell.l_atoms[0].r_alat.T
 
-#print("the original coordinates are", r_alat_supercell)
 
 data=[[ 6.58943879e-04,6.91497266e-04,7.48515032e-05],
  [-6.05728097e-05, -8.75943473e-04, -7.04679950e-04],
@@ -162,8 +144,6 @@ data=np.array(data)
 
 N=r_alat_supercell+ 1*data
 
-#print("the new coordinates in alat units", N)
-
 si_atoms_supercell = BasisAtoms.from_alat(
     "si",
     si_oncv,
@@ -172,18 +152,10 @@ si_atoms_supercell = BasisAtoms.from_alat(
     N,
 )
 
-crystal = Crystal(reallat_supercell, [si_atoms_supercell]) 
-#crystal=crystal_supercell
+crystal = Crystal(reallat_supercell, [si_atoms_supercell])
 
- # Represents the crystal
+# Represents the crystal
 
-#crystal = crystal.gen_supercell([supercell_size] * 3)
-##We want to print the coordinates of the Si atms
-#print("Si basis", si_basis.r_alat)
-#coordinates=generate_coordinates(supercell_size).T
-## Set this as the new coordinates of the basis
-#si_basis.r_cart=coordinates
-#print("new coordinates", si_basis.r_cart)
 # Generating k-points from a Monkhorst Pack grid (reduced to the crystal's IBZ)
 mpgrid_shape = (1, 1, 1)
 mpgrid_shift = (False, False, False)
@@ -195,16 +167,12 @@ ecut_rho = 4 *ecut_wfn
 grho_serial = GSpace(crystal.recilat, ecut_rho)
 
 # If G-space parallelization is not required, use the serial G-space object
-#print("N_pwgrp", dftcomm.n_pwgrp)
-#print("Image_comm_size", dftcomm.image_comm.size)
-if dftcomm.n_pwgrp == dftcomm.image_comm.size:  
+if dftcomm.n_pwgrp == dftcomm.image_comm.size:
     grho = grho_serial
 else:
     grho = DistGSpace(comm_world, grho_serial)
 gwfn = grho
 
-print("the type of grho is", type(grho))    
-print(flush=True)
 occ_typ="fixed"
 if occ_typ == "fixed":
     numbnd=int(np.round(crystal.numel // 2))
@@ -233,54 +201,53 @@ out = scf(
     force_stress=True
 )
 
-scf_converged, rho, l_wfn_kgrp, en, v_loc, nloc, xc_compute= out
+scf_converged, rho, l_wfn_kgrp, en, v_loc, _,  nloc, xc_compute= out
+
+if comm_world.rank == 0:
+    print("SCF Routine has exited")
+    print(qtmlogger)
 
 initial_time=time.time()
-#print(type(del_v_hxc))
 start_time = time.time()
 force_ewa=force_ewald(dftcomm=dftcomm,
                       crystal=crystal,
-                      gspc=gwfn, 
+                      gspc=gwfn,
                       gamma_only=False)
 
 if dftcomm.image_comm.rank==0:
     print("force ewald", force_ewa)
     print("Time taken for ewald force: ", time.time() - start_time)
-print(flush=True)
 
 ##Calculation time of Local Forces
 start_time = time.time()
 force_loc=force_local(dftcomm=dftcomm,
-                      cryst=crystal, 
-                      gspc=gwfn, rho=rho, 
+                      cryst=crystal,
+                      gspc=gwfn, rho=rho,
                       vloc=v_loc,
                       gamma_only=False)
 
 if dftcomm.image_comm.rank==0:
     print("force local", force_loc)
     print("Time taken for local force: ", time.time() - start_time)
-print(flush=True)
 
 ##Calculation time of Non Local Forces
 start_time = time.time()
 force_nloc=force_nonloc(dftcomm=dftcomm,
                           numbnd=numbnd,
-                          wavefun=l_wfn_kgrp, 
+                          wavefun=l_wfn_kgrp,
                           crystal=crystal,
                           nloc_dij_vkb=nloc)
 
 if dftcomm.image_comm.rank==0:
     print("force non local", force_nloc)
     print("Time taken for non local force: ", time.time() - start_time)
-print(flush=True)
 
-#force_time=time.time()
 start_time = time.time()
 force_total, force_norm=force(dftcomm=dftcomm,
                             numbnd=numbnd,
                             wavefun=l_wfn_kgrp,
                             crystal=crystal,
-                            gspc=gwfn, 
+                            gspc=gwfn,
                             rho=rho,
                             vloc=v_loc,
                             nloc_dij_vkb=nloc,
@@ -294,11 +261,7 @@ if dftcomm.image_comm.rank==0:
     print("force norm", force_norm)
     print("Time taken for force: ", time.time() - start_time)
 
-if comm_world.rank == 0:
-    print("SCF Routine has exited")
-    print(qtmlogger)
-
-final_time=time.time() 
+final_time=time.time()
 
 if dftcomm.image_comm.rank==0:
     print("Total time taken for the calculation", final_time-initial_time)

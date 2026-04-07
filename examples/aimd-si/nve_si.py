@@ -76,7 +76,7 @@ reallat = RealLattice.from_alat(
 )
 
 # Atom Basis
-si_oncv = UPFv2Data.from_file("Si_ONCV_PBE-1.2.upf")
+si_oncv = UPFv2Data.from_file("../dft-si/Si_ONCV_PBE-1.2.upf")
 
 si_atoms = BasisAtoms.from_alat(
     "si",
@@ -86,7 +86,7 @@ si_atoms = BasisAtoms.from_alat(
     np.array([[0,0,0],[0.5, 0.5, 0],[0, 0.5, 0.5],[0.5, 0, 0.5], [0.25, 0.25, 0.25], [0.25, 0.75, 0.75], [0.75, 0.25, 0.75], [0.75, 0.75, 0.25]]),
 )
 
-crystal_unit = Crystal(reallat, [si_atoms]) 
+crystal_unit = Crystal(reallat, [si_atoms])
 crystal_supercell=crystal_unit.gen_supercell([supercell_size] * 3)
 ##print the crystal coordinates of the supercell
 #print("The crystal coordinates of the supercell", crystal_supercell.l_atoms[0].r_alat)
@@ -94,7 +94,7 @@ r_alat_supercell=crystal_supercell.l_atoms[0].r_alat.T
 r_cart_supercell=crystal_supercell.l_atoms[0].r_cart.T
 
 
-if dftcomm.image_comm.rank==0: 
+if dftcomm.image_comm.rank==0:
     print("the original coordinates are\n", r_alat_supercell, "\n")
     print("the original coordinates in cartesian are\n", r_cart_supercell, "\n")
 
@@ -144,7 +144,7 @@ data=np.array(data).T'''
     N,  # Fractional coordinates
 )'''
 
-#crystal = Crystal(reallat, [crystal_supercell]) 
+#crystal = Crystal(reallat, [crystal_supercell])
 crystal=crystal_supercell
 
  # Represents the crystal
@@ -169,16 +169,16 @@ grho_serial = GSpace(crystal.recilat, ecut_rho)
 # If G-space parallelization is not required, use the serial G-space object
 #print("N_pwgrp", dftcomm.n_pwgrp)
 #print("Image_comm_size", dftcomm.image_comm.size)
-if dftcomm.n_pwgrp == dftcomm.image_comm.size:  
+if dftcomm.n_pwgrp == dftcomm.image_comm.size:
     grho = grho_serial
 else:
     grho = DistGSpace(comm_world, grho_serial)
 gwfn = grho
 
-print("the type of grho is", type(grho))    
+print("the type of grho is", type(grho))
 
 numbnd = int(1.2*(crystal.numel // 2)) # Ensure adequate # of bands if system is not an insulator
-conv_thr = 1e-8 * RYDBERG 
+conv_thr = 1e-8 * RYDBERG
 diago_thr_init = 1e-2 * RYDBERG
 
 #How many atoms in the cell?
@@ -266,7 +266,7 @@ vel_init=np.array([
 smear_print=1 if smear_typ=='gauss' else 0
 occ_print=1 if occ_typ=='smear' else 0
 
-if dftcomm.image_comm.rank==0: 
+if dftcomm.image_comm.rank==0:
     print("nstep=", steps)
     print("\ndt=", dt)
     print("\necutwfc=", ecut_wfn)

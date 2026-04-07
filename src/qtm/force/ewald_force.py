@@ -13,23 +13,23 @@ EWALD_ERR_THR = 1e-6  # TODO: In quantum masala ewald energy code it is set to 1
 def transgen(latvec: np.ndarray,
          rmax: float):
     r"""\textbf{Input}
-    
-    r max: the maximum radius we take into account, 
-            and we keep all the atoms inside that radius. 
+
+    r max: the maximum radius we take into account,
+            and we keep all the atoms inside that radius.
 
     latvec: lattice vectors, each column representing a vector.
             Numpy array with dimensions (3,3)
 
     For example the lattice vectors are given by $\vec{l}_1, \vec{l}_2, \vec{l}_3$\\
     and the maximum radius is $r_{max}$\\\\
-    The we make a grid that spans from the point 0,0,0 to approximately $\frac{r_{max}}{|l_1|}$, \frac{r_{max}}{|l_2|}, \frac{r_{max}}{|l_3|}$ 
+    The we make a grid that spans from the point 0,0,0 to approximately $\frac{r_{max}}{|l_1|}$, \frac{r_{max}}{|l_2|}, \frac{r_{max}}{|l_3|}$
     points in x,y,z directions in the first octant of the 3D space. Same is the case for the other of octants. It makes a grid where for
     any point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$\\\\
 
     This makes a 3D grid of approximately $2\frac{r_{max}}{|l_1|}$ \times 2\frac{r_{max}}{|l_2|} \times 2\frac{r_{max}}{|l_3|}$ points.
 
-    Now, the lattcie vectors are incorporated into this 3D grid in such a way that each point of this grid contains a vector. 
-    If the point index is $(i_1,i_2,i_3) \quad  -\frac{r_{max}}{|l_j|} \leq i_j \leq \frac{r_{max}}{|l_j|} \forall j=1,2,3 $, 
+    Now, the lattcie vectors are incorporated into this 3D grid in such a way that each point of this grid contains a vector.
+    If the point index is $(i_1,i_2,i_3) \quad  -\frac{r_{max}}{|l_j|} \leq i_j \leq \frac{r_{max}}{|l_j|} \forall j=1,2,3 $,
     then that point contains the vector $\vec{v}= \sum_{j=1}^3 i_j\vec{l}_j$
 
     After that the 3D grid is flattened for simple handling in the subsequent steps.
@@ -65,23 +65,23 @@ def rgen(trans:np.ndarray,
          max_num:float,
             rmax:float
          ):
-         r"""\textbf{Input}:
-         
-         trans: An array of the dimension $3 \times number of points in a 3D grid. 
+    r"""\textbf{Input}:
+
+         trans: An array of the dimension $3 \times number of points in a 3D grid.
          It is basically a flattened 3D grid, where each grid point contains a vector$
 
          dtau: The interatomic distance by which this grid named "trans" would be shifted.
 
-         max\_num: The maximum number of vectors that will be 
+         max\_num: The maximum number of vectors that will be
          considered for constructing the real-space grid of the Ewald calculation.
 
          rmax: The maximum distance in $x,y,z$ direction that a real-space grid point can be from the origin.
 
          \textbf{Description:}
          For context read the documentation of the \texttt{transgen} function.
-         In this function, a 3D grid was constructed such for any point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$ 
+         In this function, a 3D grid was constructed such for any point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$
 
-         Now, this grid is shifted by the amount dtau. And it is checked how many of these still satisfy the cristeria 
+         Now, this grid is shifted by the amount dtau. And it is checked how many of these still satisfy the cristeria
          that every point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$
 
          \textbf{Output:}
@@ -91,7 +91,7 @@ def rgen(trans:np.ndarray,
          r\_norm: The norms of those vectors
 
          vec\_num: Number of such vectors.
-         """
+    """
     if rmax == 0:
         raise ValueError("rmax is 0, grid is non-existent.")
     trans_copy=trans.copy()
@@ -124,13 +124,13 @@ def force_ewald(
         where $H(x)$ is given by:
         $$H(x)=\frac{\partial \text{erfc}(x)}{\partial x}-\frac{\text{erfc}(x)}{x}$$
         The first part is calculated in the real-space and the second term is calculated in the reciprocal space. First, in the code all the necessary information
-        is extracted from the crystal. 
+        is extracted from the crystal.
 
         In the subsequent part, a parameter named $\alpha$ is defined which is defined $\alpha=2\sigma^2$ and $\eta=\sqrt{2}\sigma$
 
         In the later part first the reciprocal part of the force is calculated and then the real space part is calculated. In calculating the real part,
-        use of complimentary functions are used. 
-        
+        use of complimentary functions are used.
+
         Output:
         An array of shape (3, numatom) depicting ewald forces acting on each atom.
         numatom being the number of atoms in the crystal
@@ -154,7 +154,7 @@ def force_ewald(
     str_arg = coords_cart_all.T @ gcart_nonzero
 
     # calculating the analogous structure factor:
-    ##This is actually the conjugate of the structure factor. For optimization reasons 
+    ##This is actually the conjugate of the structure factor. For optimization reasons
     #it is calculated directly. Put a -1j in the exponential to get the structure factor.
     str_fac = np.sum(np.exp(1j * str_arg) * valence_all.reshape(-1, 1), axis=0)
     alpha = 2.8
@@ -166,7 +166,7 @@ def force_ewald(
                 * np.sqrt(_alpha / np.pi)
                 * erfc(np.sqrt( gspc.ecut / 2/_alpha))
         )
-    
+
     while err_bounds(alpha) > EWALD_ERR_THR:
         alpha -= 0.1
         if alpha < 0:
@@ -175,7 +175,7 @@ def force_ewald(
             )
     eta = np.sqrt(alpha)
     fact = 4 if gamma_only else 2
-    
+
     str_fac *= np.exp(-gg_nonzero / 4 / alpha) / gg_nonzero
     sumnb = np.cos(str_arg) * np.imag(str_fac) - np.sin(str_arg) * np.real(str_fac)
     F_L = gcart_nonzero @ sumnb.T
@@ -212,7 +212,7 @@ def force_ewald(
                                 erfc(eta * rr) / rr + 2 * eta / np.sqrt(PI) * np.exp(-eta ** 2 * rr ** 2)) / rr ** 2
                 r_eff_vec = r * alat
                 F_S[:, atom1] -= np.sum(fact * r_eff_vec, axis=1)
-                del fact, r_eff_vec 
+                del fact, r_eff_vec
             del r, r_norm, vec_num, dtau0
     Force = F_S + F_L
     Force=Force.T

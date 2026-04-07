@@ -13,7 +13,6 @@ from qtm.io_utils.dft_printers import print_scf_status
 
 from qtm import qtmconfig
 from qtm.logger import qtmlogger
-qtmconfig.fft_backend = 'mkl_fft'
 
 from qtm.force import force, force_ewald, force_local, force_nonloc
 from qtm.stress import stress, stress_ewald, stress_local, stress_kinetic, stress_har, stress_nonloc, stress_xc
@@ -31,8 +30,8 @@ reallat = RealLattice.from_alat(
 )
 
 # Atom Basis
-si_oncv = UPFv2Data.from_file('Si_ONCV_PBE-1.2.upf')
- 
+si_oncv = UPFv2Data.from_file('../Si_ONCV_PBE-1.2.upf')
+
 si_atoms = BasisAtoms.from_alat(
     "si",
     si_oncv,
@@ -91,19 +90,19 @@ e_temp = 1E-2 * RYDBERG
 '''smear_typ=smear_typ,
             e_temp=e_temp,'''
 
-out = relax(dftcomm=dftcomm, 
-            constraint=constraint, 
-            crystal=crystal_super, 
-            kgrid=mpgrid_shape, 
-            kshift=mpgrid_shift , 
+out = relax(dftcomm=dftcomm,
+            constraint=constraint,
+            crystal=crystal_super,
+            kgrid=mpgrid_shape,
+            kshift=mpgrid_shift ,
             ecut_wfn=ecut_wfn,
-            numbnd=numbnd, 
-            is_spin=False, 
+            numbnd=numbnd,
+            is_spin=False,
             is_noncolin=False,
             use_symm=True,
             is_time_reversal=True,
-            symm_rho=True, 
-            rho_start=None, 
+            symm_rho=True,
+            rho_start=None,
             occ_typ='smear',
             smear_typ=smear_typ,
             e_temp=e_temp,
@@ -114,7 +113,3 @@ out = relax(dftcomm=dftcomm,
 cryst_final, en_final=out
 
 print("cryst_final", [sp.r_alat for sp in cryst_final.l_atoms])
-
-
-
-

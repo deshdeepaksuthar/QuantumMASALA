@@ -10,11 +10,9 @@ from qtm.dft import DFTCommMod
 
 from time import perf_counter
 
-##RYDBERG=1/2
-###### The energy scale is in RYDbergs all the potential are half than Quantum Espresso.
 def force_local(dftcomm: DFTCommMod,
-                cryst: Crystal, 
-                gspc: GSpace, 
+                cryst: Crystal,
+                gspc: GSpace,
                 rho:FieldGType,
                 vloc:list,
                 gamma_only:bool=False):
@@ -47,7 +45,7 @@ def force_local(dftcomm: DFTCommMod,
     l_force=np.real(vrho@cart_g.T*omega*fact)
     if l_force.ndim==3:
         l_force=l_force[0]
-    if dftcomm.pwgrp_intra!=None: 
+    if dftcomm.pwgrp_intra!=None:
         l_force=dftcomm.pwgrp_intra.allreduce(l_force)
     #force_local=cryst.symm.symmetrize_vec(l_force)
     #force_local-=np.mean(force_local, axis=0)

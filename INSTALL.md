@@ -3,6 +3,12 @@
 These installation instructions require `conda`. If you don't have a functioning `conda` installation, we recommend installing it by following these quick-install instructions:
 https://docs.conda.io/projects/miniconda/en/latest/#quick-command-line-install
 
+This project uses [Git](https://docs.github.com/en/get-started/using-git/about-git) for version control. Git is a distributed version control system that helps track changes in source code during software development. We recommend that the users have git [installed](https://git-scm.com/downloads) in their system. Quantum MASALA can then be dowloaded using the following command:
+
+```
+git clone https://github.com/qtm-iisc/QuantumMASALA.git
+```
+
 
 ## Installing on Mac
 

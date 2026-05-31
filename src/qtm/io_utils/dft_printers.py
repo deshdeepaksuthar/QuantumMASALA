@@ -1,6 +1,7 @@
 from __future__ import annotations
 import datetime
 import subprocess
+import shutil
 
 __all__ = ["print_scf_status"]
 from qtm.dft.kswfn import KSWfn
@@ -61,25 +62,98 @@ def print_scf_status(
     print()
 
 
-def print_project_git_info():
+def get_git_info():
+    """Return git commit information, or None if unavailable."""
+
+    if shutil.which("git") is None:
+        return None
+
     try:
-        # Command to get the last commit hash, day, date (Date Month, Year), and time (hh:mm:ss) for the project
-        command = [
-            "git",
-            "log",
-            "-1",
-            "--format=%H %ad",
-            "--date=format:%A, %d %B, %Y %H:%M:%S",
-        ]
-        commit_info = subprocess.check_output(command).strip().decode("utf-8")
-        commit_hash, commit_datetime = commit_info.split(" ", 1)
+        commit_hash = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            .strip()
+        )
 
-        print(" - Project Git Info:")
-        print(f"    - Commit hash:          {commit_hash}")
-        print(f"    - Commit date and time: {commit_datetime}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error retrieving project git info: {e}")
+        commit_date = (
+            subprocess.check_output(
+                [
+                    "git",
+                    "log",
+                    "-1",
+                    "--format=%ad",
+                    "--date=rfc",
+                    # "--date=format:%A, %d %B, %Y %H:%M:%S %Z",
+                ],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            .strip()
+        )
 
+        changed_files = (
+            subprocess.check_output(
+                [
+                    "git",
+                    "diff-tree",
+                    "--no-commit-id",
+                    "--name-status",
+                    "-r",
+                    "HEAD",
+                ],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            .strip()
+        )
+
+        dirty_files = (
+            subprocess.check_output(
+                [
+                    "git",
+                    "diff",
+                    "--name-status",
+                    "HEAD",
+                ],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            .strip()
+        )
+
+        return {
+            "hash": commit_hash,
+            "date": commit_date,
+            "files": changed_files.splitlines() if changed_files else [],
+            "dirty_files": dirty_files.splitlines() if dirty_files else [],
+        }
+
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        OSError,
+    ):
+        return None
+
+
+def print_project_git_info():
+    git_info = get_git_info()
+
+    if git_info is None:
+        print("Git information: unavailable")
+        return
+
+    print(f"Git information: {git_info['hash']} {git_info['date']}")
+
+    if git_info["dirty_files"]:
+        print("Local changes relative to HEAD:")
+        for line in git_info["dirty_files"]:
+            print(f"  {line}")
+    else:
+        print("No local changes.")
 
 def print_scf_parameters_old(
     dftcomm,

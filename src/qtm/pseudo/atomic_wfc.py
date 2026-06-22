@@ -3,7 +3,13 @@ from __future__ import annotations
 __all__ = ["AtwfcGenerator"]
 
 import numpy as np
-from scipy.special import sph_harm
+from scipy import __version__ as sc_version
+if sc_version >= "1.15.0" :
+    from scipy.special import sph_harm_y
+else :
+    from scipy.special import sph_harm
+    def sph_harm_y(l, m, theta, phi):
+        return sph_harm(m, l, phi, theta)
 from scipy.linalg import block_diag
 
 from qtm.crystal.basis_atoms import BasisAtoms, spdf_to_l, str_to_nl
@@ -20,7 +26,7 @@ from qtm.constants import FPI, TPIJ
 from functools import lru_cache
 
 
-class AtwfcGenerator: 
+class AtwfcGenerator:
     @qtmlogger.time("atwfc:init")
     def __init__(self, sp: BasisAtoms, gwfn: GSpace):
         # Setting Up
@@ -87,7 +93,7 @@ class AtwfcGenerator:
     @qtmlogger.time("atwfc:gen_vchi")
     @lru_cache(maxsize=None)
     def gen_chi(self, gkspc: GkSpace, proj_type = 'atomic', nlstr: str | None = None, ) -> tuple[WavefunGType, NDArray, WavefunGType]:
-        
+
         if proj_type == 'atomic':
             if nlstr is None:
                 # Setting Up: Computing spherical coordinates for all :math:`\mathbf{G}+\mathbf{k}`
@@ -143,7 +149,7 @@ class AtwfcGenerator:
                     # Applying angular part using spherical harmonics
                     l = self.lchi[idxchi]
                     for abs_m in range(l + 1):
-                        ylm = sph_harm(abs_m, l, phi, theta)
+                        ylm = sph_harm_y(l, m, theta, phi)
                         if abs_m == 0:
                             chi_atom[abs_m] = ylm * beta_gk
                         else:
@@ -166,7 +172,7 @@ class AtwfcGenerator:
                 return chi_full
 
             else:
-                
+
                 WavefunG = get_WavefunG(gkspc, 1)
                 numgk = gkspc.size_g
 
@@ -216,7 +222,7 @@ class AtwfcGenerator:
 
                 # Applying angular part using spherical harmonics
                 for abs_m in range(l + 1):
-                    ylm = sph_harm(abs_m, l, phi, theta)
+                    ylm = sph_harm_y(l, m, theta, phi)
                     if abs_m == 0:
                         chi_atom[0] = ylm * beta_gk
                     else:
@@ -240,5 +246,3 @@ class AtwfcGenerator:
                 return chi_arr
         else:
             print("unsupported projection type")
-
-        

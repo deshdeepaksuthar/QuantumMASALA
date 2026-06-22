@@ -149,7 +149,7 @@ class AtwfcGenerator:
                     # Applying angular part using spherical harmonics
                     l = self.lchi[idxchi]
                     for abs_m in range(l + 1):
-                        ylm = sph_harm_y(l, m, theta, phi)
+                        ylm = sph_harm_y(l, abs_m, theta, phi)
                         if abs_m == 0:
                             chi_atom[abs_m] = ylm * beta_gk
                         else:
@@ -222,7 +222,7 @@ class AtwfcGenerator:
 
                 # Applying angular part using spherical harmonics
                 for abs_m in range(l + 1):
-                    ylm = sph_harm_y(l, m, theta, phi)
+                    ylm = sph_harm_y(l, abs_m, theta, phi)
                     if abs_m == 0:
                         chi_atom[0] = ylm * beta_gk
                     else:

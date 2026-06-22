@@ -14,7 +14,7 @@ def real_sph_harm(l, m, theta, phi):
     elif m == 0:
         return sph_harm_y(l, 0, theta, phi).real
     else:
-        return np.sqrt(2) * np.real(sph_harm(l, m,theta, phi))
+        return np.sqrt(2) * np.real(sph_harm_y(l, m,theta, phi))
 
 
 def compute_spherical_harmonics(rl, maxl=3):

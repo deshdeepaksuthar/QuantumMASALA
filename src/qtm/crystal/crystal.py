@@ -100,13 +100,13 @@ class Crystal:
         return res
 
     def __str__(self) -> str:
-        
+
         alat_str = f"Lattice parameter 'alat' :   {self.reallat.alat:.5f}  a.u."
         cellvol_str = f"Unit cell volume         :  {self.reallat.cellvol:.5f}  (a.u.)^3"
         num_atoms_str = f"Number of atoms/cell     : {sum(sp.numatoms for sp in self.l_atoms)}"
         num_types_str = f"Number of atomic types   : {len(self.l_atoms)}"
         num_electrons_str = f"Number of electrons      : {self.numel}"
-        
+
         reallat_str = str(self.reallat)
         atoms_str = ""
         for i, sp in enumerate(self.l_atoms, start=1):
@@ -198,8 +198,8 @@ class CrystalSymm:
                     j = int(np.argmin(dists))
                     if dists[j] > 1e-3:
                         raise RuntimeError("No match found for transformed atom")
-                    self.equiv_atoms[sp][ig, i] = j  
-                    
+                    self.equiv_atoms[sp][ig, i] = j
+
     @property
     def numsymm(self) -> int:
         """Total number of crystal symmetries"""

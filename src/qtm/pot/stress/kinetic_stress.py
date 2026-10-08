@@ -1,5 +1,4 @@
 import numpy as np
-from qtm.dft import kswfn
 from qtm.crystal import Crystal
 from qtm.constants import ELECTRON_RYD, RY_KBAR
 from qtm.dft import DFTCommMod

@@ -3,7 +3,6 @@ import gc
 
 import numpy as np
 
-from qtm.lattice import ReciLattice
 from qtm.crystal import Crystal
 from qtm.gspace import GSpace
 from qtm.constants import ELECTRON_RYD, PI, RYDBERG_HART
@@ -65,33 +64,33 @@ def rgen(trans:np.ndarray,
          max_num:float,
             rmax:float
          ):
-         r"""\textbf{Input}:
-         
-         trans: An array of the dimension $3 \times number of points in a 3D grid. 
-         It is basically a flattened 3D grid, where each grid point contains a vector$
+    r"""\textbf{Input}:
 
-         dtau: The interatomic distance by which this grid named "trans" would be shifted.
+    trans: An array of the dimension $3 \times number of points in a 3D grid.
+    It is basically a flattened 3D grid, where each grid point contains a vector$
 
-         max\_num: The maximum number of vectors that will be 
-         considered for constructing the real-space grid of the Ewald calculation.
+    dtau: The interatomic distance by which this grid named "trans" would be shifted.
 
-         rmax: The maximum distance in $x,y,z$ direction that a real-space grid point can be from the origin.
+    max\_num: The maximum number of vectors that will be
+    considered for constructing the real-space grid of the Ewald calculation.
 
-         \textbf{Description:}
-         For context read the documentation of the \texttt{transgen} function.
-         In this function, a 3D grid was constructed such for any point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$ 
+    rmax: The maximum distance in $x,y,z$ direction that a real-space grid point can be from the origin.
 
-         Now, this grid is shifted by the amount dtau. And it is checked how many of these still satisfy the cristeria 
-         that every point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$
+    \textbf{Description:}
+    For context read the documentation of the \texttt{transgen} function.
+    In this function, a 3D grid was constructed such for any point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$
 
-         \textbf{Output:}
+    Now, this grid is shifted by the amount dtau. And it is checked how many of these still satisfy the cristeria
+    that every point $(i_1, i_2, i_3), |i_j|<r_{max} \forall j=1,2,3$
 
-         r.T: The transpose of the vectors which satisfy the above said criteria.
+    \textbf{Output:}
 
-         r\_norm: The norms of those vectors
+    r.T: The transpose of the vectors which satisfy the above said criteria.
 
-         vec\_num: Number of such vectors.
-         """
+    r\_norm: The norms of those vectors
+
+    vec\_num: Number of such vectors.
+    """
     if rmax == 0:
         raise ValueError("rmax is 0, grid is non-existent.")
     trans_copy=trans.copy()

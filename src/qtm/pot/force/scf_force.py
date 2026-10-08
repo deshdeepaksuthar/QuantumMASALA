@@ -1,7 +1,7 @@
 import numpy as np
 
 from qtm.containers import FieldGType
-from qtm.crystal import Crystal, BasisAtoms
+from qtm.crystal import Crystal
 
 from qtm.pseudo import loc_generate_rhoatomic_interpolate
 

@@ -1,11 +1,9 @@
 import numpy as np
 
-from qtm.pot import xc
 from qtm.crystal import Crystal
 from qtm.gspace import GSpace
 from qtm.mpi.gspace import DistGSpace
-from qtm.containers.field import FieldGType, get_FieldG
-from qtm.pseudo.loc import loc_generate_pot_rhocore
+from qtm.containers.field import FieldGType
 from qtm.constants import RY_KBAR, RYDBERG
 from qtm.config import NDArray
 from qtm.dft import DFTCommMod

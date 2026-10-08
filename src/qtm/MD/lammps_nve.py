@@ -1,100 +1,30 @@
 from __future__ import annotations
 import gc
-import tracemalloc
-import numpy as numpy
 from lammps import lammps
 
-from qtm.constants import RYDBERG, ELECTRONVOLT, vel_HART, BOLTZMANN_SI, BOLTZMANN_HART, M_NUC_HART, MASS_SI
-from qtm.lattice import RealLattice
+from qtm.constants import RYDBERG, BOLTZMANN_HART, M_NUC_HART
 from qtm.crystal import BasisAtoms, Crystal
-from qtm.pseudo import UPFv2Data
-from qtm.kpts import gen_monkhorst_pack_grid
-from qtm.gspace import GSpace
-from qtm.mpi import QTMComm
 from qtm.dft import DFTCommMod, scf
 
-from qtm.io_utils.dft_printers import print_scf_status
-
 from qtm import qtmconfig
-from qtm.logger import qtmlogger
 qtmconfig.fft_backend = 'mkl_fft'
-
 
 from typing import TYPE_CHECKING
 
-from qtm.logger import qtmlogger
 if TYPE_CHECKING:
     from typing import Literal
-    from numbers import Number
 __all__ = ['scf', 'EnergyData', 'IterPrinter']
 
-from dataclasses import dataclass
-from time import perf_counter
-from sys import version_info
 import numpy as np
 
-from qtm.crystal import Crystal
 from qtm.kpts import KList
-from qtm.gspace import GSpace, GkSpace
-from qtm.mpi.gspace import DistGSpace
-from qtm.containers import FieldGType, FieldRType, get_FieldG
+from qtm.gspace import GSpace
+from qtm.containers import FieldGType, get_FieldG
 
-from qtm.pot import hartree, xc, ewald
-from qtm.pseudo import (
-    loc_generate_rhoatomic, loc_generate_pot_rhocore,
-    NonlocGenerator
-)
-from qtm.symm.symmetrize_field import SymmFieldMod
+from qtm.dft import DFTCommMod, DFTConfig, KSWfn
 
-from qtm.dft import DFTCommMod, DFTConfig, KSWfn, KSHam, eigsolve, occup, mixing
-
-from qtm.mpi.check_args import check_system
-from qtm.mpi.utils import scatter_slice
-
-from qtm.force import force
-
-from qtm.msg_format import *
-from qtm.constants import RYDBERG
-
-from qtm.config import MPI4PY_INSTALLED
-if MPI4PY_INSTALLED:
-    from mpi4py.MPI import COMM_WORLD
-else:
-    COMM_WORLD = None
-
-comm_world = QTMComm(COMM_WORLD)
-
-
-@dataclass
-class EnergyData:
-    total: float = 0.0
-    hwf: float = 0.0
-    one_el: float = 0.0
-    ewald: float = 0.0
-    hartree: float = 0.0
-    xc: float = 0.0
-
-    fermi: float | None = None
-    smear: float | None = None
-    internal: float | None = None
-
-    HO_level: float | None = None
-    LU_level: float | None = None
-if version_info[1] >= 8:
-    from typing import Protocol
-
-    class IterPrinter(Protocol):
-        def __call__(self, idxiter: int, runtime: float, scf_converged: bool,
-                     e_error: float, diago_thr: float, diago_avgiter: float,
-                     en: EnergyData) -> None:
-            ...
-
-    class WfnInit(Protocol):
-        def __call__(self, ik: int, kswfn: list[KSWfn]) -> None:
-            ...
-else:
-    IterPrinter = 'IterPrinter'
-    WfnInit = 'WfnInit'
+from qtm.pot.force import force
+from qtm.MD.common import EnergyData, IterPrinter, WfnInit, comm_world
 
 def write_lammps_data(filename, l_atoms, primvec, coords_cart_all, bohr_to_angstrom):
     """Write a LAMMPS data file with triclinic box and fractional coordinates."""

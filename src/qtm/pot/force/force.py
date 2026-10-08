@@ -6,7 +6,7 @@ from qtm.gspace import GSpace
 from qtm.containers.field import FieldGType
 #from qtm.mpi.containers import DistFieldG
 from qtm.config import NDArray
-from qtm.force import force_ewald, force_nonloc, force_local, force_scf
+from qtm.pot.force import force_ewald, force_nonloc, force_local
 from qtm.dft import DFTCommMod 
 
 ## Addition of Ewald, Non-Local and Local forces

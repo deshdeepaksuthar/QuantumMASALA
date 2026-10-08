@@ -5,13 +5,10 @@ import numpy as np
 from qtm.crystal import Crystal
 from qtm.gspace import GSpace
 from qtm.containers.field import FieldGType
-from qtm.pseudo.loc import loc_generate_pot_rhocore, loc_generate_dpot
+from qtm.pseudo.loc import loc_generate_dpot
 from qtm.constants import RYDBERG, RY_KBAR
 
-
 from qtm.dft import DFTCommMod
-from qtm.mpi import QTMComm
-from mpi4py.MPI import COMM_WORLD  
 
 
 def stress_local(dftcomm:DFTCommMod,

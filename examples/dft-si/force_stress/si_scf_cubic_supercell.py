@@ -35,7 +35,7 @@ from qtm.kpts import gen_monkhorst_pack_grid
 from qtm.gspace import GSpace
 from qtm.mpi import QTMComm
 from qtm.dft import DFTCommMod, scf
-from qtm.force import force, force_ewald, force_local, force_nonloc
+from qtm.pot.force import force, force_ewald, force_local, force_nonloc
 
 from qtm.io_utils.dft_printers import print_scf_status
 
@@ -74,7 +74,7 @@ reallat = RealLattice.from_alat(
 )
 
 # Atom Basis
-si_oncv = UPFv2Data.from_file("Si_ONCV_PBE-1.2.upf")
+si_oncv = UPFv2Data.from_file("../Si_ONCV_PBE-1.2.upf")
 
 si_atoms = BasisAtoms.from_alat(
     "si",

@@ -1,41 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, Callable
-
-
-from typing import TYPE_CHECKING
-import logging
-
-from qtm.logger import qtmlogger
-from qtm.config import MPI4PY_INSTALLED
+from typing import Optional
 
 import numpy as np
 from qtm.config import qtmconfig
 from qtm.containers.field import FieldGType, FieldRType
-from qtm.containers.wavefun import WavefunGType
 from qtm.crystal.crystal import Crystal, BasisAtoms
 from qtm.dft.kswfn import KSWfn
-from qtm.dft.scf import EnergyData
-from qtm.gspace import GSpace, GkSpace
-from qtm.mpi.comm import QTMComm
-from qtm.pot import ewald, hartree, xc
-from qtm.pot.xc import check_libxc_func, get_libxc_func
+from qtm.pot import hartree, xc
 from qtm.pseudo.loc import loc_generate_pot_rhocore
 from qtm.pseudo.nloc import NonlocGenerator
 #from qtm.tddft_gamma.prop.etrs import normalize_rho
 from qtm.tddft_gamma.propagate import propagate
-from tqdm import trange
-from qtm.force import force
+from qtm.pot.force import force
 from qtm.dft.config import DFTCommMod
-from qtm.constants import RYDBERG, ELECTRONVOLT, vel_RYD, BOLTZMANN_SI, BOLTZMANN_RYD, M_NUC_RYD, MASS_SI
+from qtm.constants import BOLTZMANN_RYD, M_NUC_RYD, MASS_SI
 
-if MPI4PY_INSTALLED:
-    from qtm.mpi.containers import get_DistFieldG
-from qtm.mpi.gspace import DistGSpace, DistGkSpace
-
-if TYPE_CHECKING:
-    from typing import Literal
-    from numbers import Number
 __all__ = ["scf", "EnergyData", "Iterprinter"]
 
 def Ehrenfest(

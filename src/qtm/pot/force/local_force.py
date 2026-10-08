@@ -4,11 +4,8 @@ import gc
 from qtm.crystal import Crystal
 from qtm.gspace import GSpace
 from qtm.containers.field import FieldGType
-from qtm.pseudo.loc import loc_generate_pot_rhocore
-from qtm.constants import RYDBERG,PI
+from qtm.constants import RYDBERG
 from qtm.dft import DFTCommMod
-
-from time import perf_counter
 
 ##RYDBERG=1/2
 ###### The energy scale is in RYDbergs all the potential are half than Quantum Espresso.

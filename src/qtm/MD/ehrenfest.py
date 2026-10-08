@@ -10,7 +10,6 @@ from qtm.dft.kswfn import KSWfn
 from qtm.pot import hartree, xc
 from qtm.pseudo.loc import loc_generate_pot_rhocore
 from qtm.pseudo.nloc import NonlocGenerator
-#from qtm.tddft_gamma.prop.etrs import normalize_rho
 from qtm.tddft_gamma.propagate import propagate
 from qtm.pot.force import force
 from qtm.dft.config import DFTCommMod
@@ -24,11 +23,9 @@ def Ehrenfest(
     rho_start: FieldGType,
     wfn_gamma: list[list[KSWfn]],
     T_init: float,
-    #occ_typ: Literal["smear", "fixed"],
     time_step_N: float,
     time_step_e: float,
     numstep: int,
-    #dipole_updater: Callable[[int, FieldGType, WavefunGType], None],
     vel_start:Optional[np.ndarray | None] = None,
     libxc_func: Optional[tuple[str, str]] = None,
 ):
@@ -66,7 +63,6 @@ def Ehrenfest(
     mass_si=mass_all*MASS_SI
     ##First we assign velocities to the atoms
     vel=np.random.rand(tot_num, 3)-0.5
-    #dftcomm.image_comm.Bcast(vel)      
     ##Calculate the momentum
     momentum=mass_all*vel.T
 
@@ -80,8 +76,6 @@ def Ehrenfest(
     ke=0.5*np.sum(mass_all*(vel)**2)
     ##Calculate the temperature
     T=2*ke/(3*tot_num*BOLTZMANN_RYD)
-    # print("BOLTZMANN_RYD", BOLTZMANN_RYD)
-    #if dftcomm.image_comm.rank==0: print("the temperature calculated from the random velocities is", T, "K")
     ##Rescale the velocities to the desired temperature
     vel*=np.sqrt(T_init/T)
     if type(vel_start)==np.ndarray:
@@ -100,10 +94,6 @@ def Ehrenfest(
                       libxc_func:Optional[tuple[str, str]] = None,
                       ):
         ##Create the reciprocal space from rho
-        #numel = crystal.numel
-
-        #is_spin = len(wfn_gamma[0]) > 1
-        #is_noncolin = wfn_gamma[0][0].is_noncolin
         numbnd=wfn_gamma[0][0].numbnd
         gspc_rho = rho_start.gspc
         gspc_wfn = gspc_rho
@@ -127,8 +117,6 @@ def Ehrenfest(
         v_xc: FieldRType
         v_loc: FieldRType
 
-        #en: EnergyData = EnergyData()
-
         if libxc_func is None:
             libxc_func = xc.get_libxc_func(crystal)
         else:
@@ -140,7 +128,6 @@ def Ehrenfest(
             v_hart, en_hartree = hartree.compute(rho_)
             v_xc, en_xc, GGA = xc.compute(rho_, rho_core, *libxc_func)
             v_loc = v_ion + v_hart + v_xc
-            #comm_world.bcast(v_loc._data)
             v_loc *= 1 / np.prod(gspc_wfn.grid_shape)
             return v_loc
         
@@ -310,9 +297,6 @@ def Ehrenfest(
             counter+=sp.numatoms
         crystal=Crystal(reallat, updated_sp)
 
-        dist=np.linalg.norm(coords_cart_all[0]-coords_cart_all[1])
-        print(dist)
-    
     return coords_cart_all
 
 

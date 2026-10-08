@@ -1,5 +1,4 @@
 import numpy as np
-import gc
 
 from qtm.crystal import Crystal
 from qtm.gspace import GSpace
@@ -7,17 +6,15 @@ from qtm.containers.field import FieldGType
 from qtm.constants import RYDBERG
 from qtm.dft import DFTCommMod
 
-##RYDBERG=1/2
-###### The energy scale is in RYDbergs all the potential are half than Quantum Espresso.
+###### The energy scale is in RYDbergs, all the potentials are half that of Quantum Espresso.
 def force_local(dftcomm: DFTCommMod,
-                cryst: Crystal, 
-                gspc: GSpace, 
+                cryst: Crystal,
+                gspc: GSpace,
                 rho:FieldGType,
                 vloc:list,
                 gamma_only:bool=False):
 
     #Setting up characteristics of the crystal
-    #start_time=perf_counter()
     l_atoms=cryst.l_atoms
     numatoms=[sp.numatoms for sp in l_atoms]
     tot_num = np.sum(numatoms)
@@ -39,16 +36,10 @@ def force_local(dftcomm: DFTCommMod,
         v_loc[labels==isp]=np.real(vloc[isp].data)
     v_loc=v_loc[:,idxsort]
     fact=2 if gamma_only else 1
-    l_force=np.zeros((tot_num, 3))
     vrho=np.multiply(v_loc,(np.imag(np.exp(1j*gtau)*rho)/RYDBERG))
     l_force=np.real(vrho@cart_g.T*omega*fact)
     if l_force.ndim==3:
         l_force=l_force[0]
-    if dftcomm.pwgrp_intra!=None: 
+    if dftcomm.pwgrp_intra!=None:
         l_force=dftcomm.pwgrp_intra.allreduce(l_force)
-    #force_local=cryst.symm.symmetrize_vec(l_force)
-    #force_local-=np.mean(force_local, axis=0)
-
-    del v_loc, vrho, rho, labels, coords_cart_all, cryst, gspc, vloc, dftcomm
-    gc.collect()
     return l_force

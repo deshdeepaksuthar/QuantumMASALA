@@ -30,45 +30,6 @@ from qtm.MD.common import EnergyData, IterPrinter, WfnInit, comm_world
 ##If store_var is set to true then, the variables like energy and temperature are stored and 
 # these can be plotted with respect to time if is_plot is set to true
 
-file_path='md_qe.out'
-def force_extract(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-        force_string="Forces acting on atoms"
-        force_lines=  []
-        force_start = False
-
-        for (i, line) in enumerate(lines):
-            #print(lines[i])
-            if force_string in line:
-                force_local_array=[]
-                force_start = True
-                #print("Force start")
-                i+=2
-                #print(line.strip())
-                for j in range(i, i+64):
-                    force_local_array.append(lines[j].strip().split()[-3:])
-                force_local_array=np.array(force_local_array, dtype=float)
-                force_lines.append(force_local_array)
-                #force_lines=np.array(force_lines, dtype=float)
-                #print("Force lines")
-                #print(force_local_array)
-                i+=64
-                force_start = False
-                #print("Force end")
-        force_lines=np.array(force_lines, dtype=float)
-        print("Force lines")
-        print(force_lines)
-        print("Force lines shape")
-        print(force_lines.shape)
-    return force_lines
-
-#forces=force_extract(file_path)
-
-
-
-
 def NVE_MD(dftcomm: DFTCommMod,
           crystal: Crystal,
           max_t: float,
@@ -109,12 +70,8 @@ def NVE_MD(dftcomm: DFTCommMod,
         label_cryst=np.array([sp.label for sp in l_atoms])
         mass_cryst=np.array([sp.mass for sp in l_atoms])*M_NUC_RYD
         mass_all=np.repeat([sp.mass for sp in l_atoms], [sp.numatoms for sp in l_atoms])*M_NUC_RYD
-        #print(mass_all)
-        #tot_mass=np.sum(mass_all)
         num_typ = len(l_atoms)
         reallat=crystal.reallat
-        #lnum_labels = np.repeat([np.arange(num_typ)], [sp.numatoms for sp in l_atoms])
-        #coords_alat_all = np.concatenate([sp.r_alat for sp in l_atoms], axis=1)
         coords_cart_all = np.concatenate([sp.r_cart for sp in l_atoms], axis =1).T
         coords_ref=coords_cart_all/reallat.alat
         ##This is a numatom times 3 array containing the coordinates of all the atoms in the crystal
@@ -124,9 +81,7 @@ def NVE_MD(dftcomm: DFTCommMod,
 
         ##INIT-MD
         #region: Initializing the Molecular Dynamics simulations
-        #mass_si=mass_all*MASS_SI
         ##First we assign velocities to the atoms
-        #print("the rank of the processor is", comm.rank, "out of the total processors", comm.size)
         vel=np.zeros((tot_num, 3))
         np.random.seed(None)
         if type(vel_init)==None:
@@ -153,11 +108,6 @@ def NVE_MD(dftcomm: DFTCommMod,
             coords_cart_prev=coords_cart_all-vel.T*dt  
            ## THis is required to initialize the Verlet algorithm
         if dftcomm.image_comm.rank==0: print("the temperature after rescaling is", T_scale, "K")
-        ##Convert the velocities to atomic units
-        if dftcomm.image_comm.rank==0: print("re-scaled velocities in atomic units at the time of initializatiion for processor", dftcomm.image_comm.rank, "\n", vel)
-       ##Calculate the previous coordinates
-        
-        #print("coords cart prev", coords_cart_prev)
         del vel
 
         time_step=int(max_t/dt)
@@ -178,13 +128,6 @@ def NVE_MD(dftcomm: DFTCommMod,
         #endregion: Initializing the Molecular Dynamics simulations
 
         ##region:This computes the forces on the molecules
-        
-        
-        #3Debugging steps
-        #en=1
-        #rho_itr=rho_start
-        #wfn_itr=wfn_init
-        
         def compute_en_force(dftcomm, coords_all, rho: FieldGType, wfn:list[KSWfn] | None = None):
             nonlocal libxc_func, gamma_only, ecut_wfn, e_temp, conv_thr, maxiter, diago_thr_init, iter_printer, mix_beta, mix_dim, ret_vxc
             l_atoms_itr=[]
@@ -209,11 +152,6 @@ def NVE_MD(dftcomm: DFTCommMod,
                 FieldG_rho_itr: FieldGType= get_FieldG(grho)
                 if rho is not None: rho_itr=FieldG_rho_itr(rho.data)
                 else: rho_itr=rho
-
-                '''with dftcomm.image_comm as comm: 
-                    print("Hello! my rank is, ", comm.rank)
-                    print("the primvector I have in my lattice is", crystal_itr.reallat.primvec)
-                    print(flush=True)'''
 
                 out = scf(
                         dftcomm=dftcomm, 
@@ -243,11 +181,7 @@ def NVE_MD(dftcomm: DFTCommMod,
                         )
                 
                 scf_converged, rho, l_wfn_kgrp, en, v_loc, rho_core, nloc, xc_compute = out
-                '''if comm.rank==0:  
-                    print("my rank is", dftcomm.image_comm.rank)
-                    print("And I have successfully calculated energy", en.total)'''
                 #region of calculation of the jacobian i.e the force
-
                 force_itr= force(dftcomm=dftcomm,
                                     numbnd=numbnd,
                                     wavefun=l_wfn_kgrp, 
@@ -261,12 +195,6 @@ def NVE_MD(dftcomm: DFTCommMod,
                                     verbosity=True)[0]
 
                 del v_loc, nloc, xc_compute, crystal_itr, FieldG_rho_itr
-                for var in list(locals().keys()):
-                    if var not in ["en", "force_itr", "rho"]:
-                        del locals()[var]
-                gc.collect()  
-                #if dftcomm.image_comm.rank==0:
-                    #print("I am process", comm.rank, "and I have calculated the force", force_itr)
             return en.total, force_itr, rho, l_wfn_kgrp
         time=0
         
@@ -278,14 +206,11 @@ def NVE_MD(dftcomm: DFTCommMod,
             en, force_coord, rho_itr, wfn_itr=compute_en_force(dftcomm, coords_cart_all, rho_md, wfn_md)
             en/=RYDBERG
             time_step=int(time/dt)
-            #force_coord=forces[time_step]
             if dftcomm.image_comm.rank==0: print("this is iteration", time/dt, "and the force is", force_coord)
-            #del rho_md, wfn_md      ##Debugging Step
             rho_md=rho_itr
             wfn_md=WfnInit(wfn_itr)
-            #del rho_itr            ##Debugging Step
 
-            ##SCF calculation is done to calculate the forces, the ground state rho and wavefunctions are used in the next iteration for better convergence. 
+            ##SCF calculation is done to calculate the forces, the ground state rho and wavefunctions are used in the next iteration for better convergence.
 
             accelaration=force_coord.T/mass_all  ##accelaration
 
@@ -297,19 +222,12 @@ def NVE_MD(dftcomm: DFTCommMod,
             ##Calculate the RDist
             RDF_array.append(RDist(crystal, coords_new, num_bins=bins, rmax=rmax)[1])
 
-            if dftcomm.image_comm.rank==0:
-                print("change in coordinates in each iteration", coords_new-coords_cart_all)
-
             ##New velocity and calculation of the velcoity autocorrelation fucntion
             vel_new=(coords_new-coords_cart_prev)/(2*dt)
             vacf=np.sum(vel_new*vel_ref, axis=1)
             vacf=np.mean(vacf, axis=0)/norm_factor
 
-            if dftcomm.image_comm.rank==0:
-                print("the new velocity at this iteration is", vel_new)
-            
             ##New Kinetic Energy
-            #ke_new=0.5*np.sum(np.sum(momentum_new**2, axis=1)/mass_all)
             ke_new=0.5*np.sum(mass_all*(vel_new.T)**2)
             ##New Temperature
             T_new=2*ke_new/(3*tot_num*BOLTZMANN_RYD)
@@ -350,8 +268,7 @@ def NVE_MD(dftcomm: DFTCommMod,
             del coords_cart_all
             coords_cart_all=coords_new
             del coords_new
-            
-            print(flush=True)
+
             gc.collect()
             time+=dt
         
